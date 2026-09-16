@@ -149,11 +149,18 @@ public class DeviceContextPlugin: NSObject, FlutterPlugin {
   }
 
   private func fetchLocationInfo(into data: inout [String: Any]) {
-    if let location = CLLocationManager().location {
-      data["latitude"] = location.coordinate.latitude
-      data["longitude"] = location.coordinate.longitude
-      data["altitude"] = location.altitude
-    }
+    guard let location = CLLocationManager().location else { return }
+    let coordinate = location.coordinate
+    let hasInvalidFix = location.horizontalAccuracy < 0
+    let isStale = Date().timeIntervalSince(location.timestamp) > 300
+    let isNoFixDefault =
+        abs(coordinate.latitude - 37.33233141) < 0.0001 &&
+        abs(coordinate.longitude + 122.0312186) < 0.0001
+    let isNullIsland = coordinate.latitude == 0 && coordinate.longitude == 0
+    if hasInvalidFix || isStale || isNoFixDefault || isNullIsland { return }
+    data["latitude"] = coordinate.latitude
+    data["longitude"] = coordinate.longitude
+    data["altitude"] = location.altitude
   }
 
   private func fetchInstantMotionInfo(into data: inout [String: Any]) {

@@ -273,12 +273,17 @@ class DeviceContextPlugin: FlutterPlugin, MethodCallHandler {
     private fun fetchLocationInfo(map: HashMap<String, Any?>) {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-            val location = locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER)
-            location?.let {
-                map["latitude"] = it.latitude
-                map["longitude"] = it.longitude
-                map["altitude"] = it.altitude
-            }
+            val lastLocation = locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER) ?: return
+            val hasInvalidFix = !lastLocation.hasAccuracy() || lastLocation.accuracy < 0f
+            val isStale = System.currentTimeMillis() - lastLocation.time > 300_000L
+            val isNoFixDefault =
+                abs(lastLocation.latitude - 37.33233141) < 1e-4 &&
+                abs(lastLocation.longitude + 122.0312186) < 1e-4
+            val isNullIsland = lastLocation.latitude == 0.0 && lastLocation.longitude == 0.0
+            if (hasInvalidFix || isStale || isNoFixDefault || isNullIsland) return
+            map["latitude"] = lastLocation.latitude
+            map["longitude"] = lastLocation.longitude
+            map["altitude"] = lastLocation.altitude
         }
     }
 
